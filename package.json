@@ -1,0 +1,40 @@
+{
+  "name": "block9-webhook-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web Nâng Cao, Block 9: giao sự kiện summary.completed qua webhook với transactional outbox, inbox và chữ ký HMAC.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "up": "docker compose up -d --build --wait",
+    "down": "docker compose down",
+    "clean": "docker compose down -v",
+    "ps": "docker compose ps",
+    "logs": "docker compose logs -f --tail 50 sender-api relay receiver-api receiver-worker",
+    "db:invariants": "docker compose stop -t 0 relay receiver-worker && docker compose exec -T postgres psql -U app -d app -v ON_ERROR_STOP=1 -q -f /app-tests/schema-invariants.sql && docker compose start relay receiver-worker",
+    "sender:stop": "docker compose stop -t 0 sender-api",
+    "sender:start": "docker compose start sender-api",
+    "relay:stop": "docker compose stop -t 0 relay",
+    "relay:start": "docker compose start relay",
+    "relay:kill": "docker compose kill -s SIGKILL relay",
+    "sender:kill": "docker compose kill -s SIGKILL sender-api",
+    "receiver:stop": "docker compose stop -t 0 receiver-api",
+    "receiver:start": "docker compose start receiver-api",
+    "receiver:kill": "docker compose kill -s SIGKILL receiver-api",
+    "worker:stop": "docker compose stop -t 0 receiver-worker",
+    "worker:start": "docker compose start receiver-worker",
+    "worker:kill": "docker compose kill -s SIGKILL receiver-worker",
+    "fixture:reset": "docker compose exec -T postgres psql -U app -d app -v ON_ERROR_STOP=1 -q -f /app-tests/reset-fixture.sql",
+    "probe": "node tests/webhook-probe.js",
+    "ui": "node tools/demo-ui/server.js",
+    "case": "node tools/lab.js case",
+    "cases": "node tools/lab.js all",
+    "lab": "node tools/lab.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.13.1"
+  }
+}

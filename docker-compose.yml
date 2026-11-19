@@ -1,0 +1,75 @@
+# Toàn bộ hệ thống của bài lab. Mọi cổng chỉ mở trên 127.0.0.1 (ràng buộc
+# "endpoint cố định ở loopback", "route quản trị chỉ mở trên loopback").
+name: block9
+
+x-node-service: &node-service
+  build: .
+  image: block9-app:latest
+  init: true            # Node không chạy làm PID 1, nhận tín hiệu tắt đúng cách
+  restart: "no"         # process bị kill phải NẰM YÊN cho đến khi script bật lại
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &node-env
+    DATABASE_URL_SENDER: postgres://app:app@postgres:5432/sender
+    DATABASE_URL_RECEIVER: postgres://app:app@postgres:5432/receiver
+    WEBHOOK_URL: http://receiver-api:3001/webhooks/summaries
+    WEBHOOK_SECRET: lab-secret-khong-dung-that
+    WEBHOOK_SOURCE: summary-service
+    HTTP_TIMEOUT_MS: "2000"
+    MAX_ATTEMPTS_PER_ROUND: "4"
+    RETRY_DELAYS_MS: "1000,3000,9000"
+    RETRY_AFTER_MAX_S: "300"
+    MAX_REPLAYS: "4"
+    TIMESTAMP_WINDOW_S: "300"
+
+services:
+  # Một DB server, hai database logic độc lập: sender và receiver.
+  # Không có transaction nào bao quanh cả hai.
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    # 15432 chứ không 55432: Windows giữ riêng dải 55377-55476 cho Hyper-V
+    # (netsh int ipv4 show excludedportrange protocol=tcp).
+    ports: ["127.0.0.1:15432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Chỉ chạy khi volume còn trống, theo thứ tự tên file.
+      - ./db:/docker-entrypoint-initdb.d:ro
+      # Bộ kiểm bất biến, chạy bằng: npm run db:invariants
+      - ./tests:/app-tests:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app && psql -U app -d sender -c 'SELECT 1 FROM jobs LIMIT 1' >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  sender-api:
+    <<: *node-service
+    command: ["node", "services/sender-api/index.js"]
+    environment:
+      <<: *node-env
+      PORT: "3000"
+    ports: ["127.0.0.1:3000:3000"]
+
+  relay:
+    <<: *node-service
+    command: ["node", "services/relay/index.js"]
+
+  receiver-api:
+    <<: *node-service
+    command: ["node", "services/receiver-api/index.js"]
+    environment:
+      <<: *node-env
+      PORT: "3001"
+    ports: ["127.0.0.1:3001:3001"]
+
+  receiver-worker:
+    <<: *node-service
+    command: ["node", "services/receiver-worker/index.js"]
+
+volumes:
+  pgdata:

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 700" width="1140" height="700" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="ar-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+    </marker>
+  </defs>
+
+  <style>
+    .proc  { fill:#f8fafc; stroke:#334155; stroke-width:1.6; rx:8 }
+    .dbbox { fill:#f1f5f9; stroke:#64748b; stroke-width:1.4; rx:10 }
+    .tbl   { fill:#ffffff; stroke:#94a3b8; stroke-width:1; rx:5 }
+    .tx    { fill:none; stroke:#059669; stroke-width:1.6; stroke-dasharray:7 4; rx:10 }
+    .wire  { fill:none; stroke:#475569; stroke-width:1.6; marker-end:url(#ar) }
+    .wire2 { fill:none; stroke:#1d4ed8; stroke-width:2.2; marker-end:url(#ar-blue) }
+    .h     { font-size:15px; font-weight:700; fill:#0f172a }
+    .t     { font-size:12.5px; fill:#334155 }
+    .s     { font-size:11.5px; fill:#64748b }
+    .txl   { font-size:12px; font-weight:700; fill:#047857 }
+    .call  { font-size:12.5px; font-weight:700; fill:#b45309 }
+    .callbox { fill:#fffbeb; stroke:#f59e0b; stroke-width:1.3; rx:7 }
+    .split { stroke:#dc2626; stroke-width:2; stroke-dasharray:10 6 }
+    .splitl{ font-size:13px; font-weight:700; fill:#b91c1c }
+  </style>
+
+  <text x="24" y="30" class="h" font-size="18">Block 9 — hai DB, bốn process, sáu transaction</text>
+  <text x="24" y="50" class="s">Mũi tên xanh là HTTP. Khung xanh nét đứt là một transaction. Không có transaction nào bắc qua vạch đỏ.</text>
+
+  <!-- vạch đỏ chia hai phía -->
+  <line x1="566" y1="70" x2="566" y2="660" class="split"/>
+  <text x="574" y="88" class="splitl">KHÔNG có transaction nào bắc qua đây</text>
+  <text x="574" y="104" class="s">hai database riêng, hai connection pool riêng, không 2PC</text>
+
+  <!-- ===================== PHÍA SENDER ===================== -->
+  <text x="24" y="130" class="h" fill="#1e293b">Phía sender</text>
+
+  <rect x="24" y="142" width="210" height="62" class="proc"/>
+  <text x="36" y="164" class="h">Sender API</text>
+  <text x="36" y="182" class="t">POST /jobs/:job_id/complete</text>
+  <text x="36" y="197" class="s">trả 200 SAU commit</text>
+
+  <rect x="300" y="142" width="210" height="62" class="proc"/>
+  <text x="312" y="164" class="h">Relay</text>
+  <text x="312" y="182" class="t">một process duy nhất</text>
+  <text x="312" y="197" class="s">timeout 2 s · không theo redirect</text>
+
+  <!-- DB sender -->
+  <rect x="24" y="330" width="486" height="300" class="dbbox"/>
+  <text x="36" y="354" class="h">DB sender</text>
+  <text x="36" y="371" class="s">postgres://…/sender</text>
+
+  <rect x="36" y="384" width="220" height="52" class="tbl"/>
+  <text x="46" y="403" class="t" font-weight="700">jobs</text>
+  <text x="46" y="420" class="s">job_id · video_id · version · summary · status</text>
+
+  <rect x="36" y="446" width="220" height="66" class="tbl"/>
+  <text x="46" y="465" class="t" font-weight="700">outbox</text>
+  <text x="46" y="481" class="s">event_id PK · job_id UNIQUE</text>
+  <text x="46" y="496" class="s">raw_body bất biến · status · round · next_attempt_at</text>
+
+  <rect x="274" y="384" width="224" height="66" class="tbl"/>
+  <text x="284" y="403" class="t" font-weight="700">delivery_attempts</text>
+  <text x="284" y="419" class="s">attempt_id · round · lần trong vòng</text>
+  <text x="284" y="434" class="s">outcome · http_status · error_kind</text>
+
+  <rect x="274" y="460" width="224" height="52" class="tbl"/>
+  <text x="284" y="479" class="t" font-weight="700">replays</text>
+  <text x="284" y="496" class="s">round 2…5 — tối đa 4 lần replay</text>
+
+  <!-- T1 -->
+  <rect x="14" y="132" width="252" height="394" class="tx"/>
+  <text x="20" y="546" class="txl">T1 — một transaction: khóa job → DONE → INSERT outbox</text>
+  <text x="20" y="562" class="s">trigger ở DB từ chối commit nếu job DONE mà không có outbox</text>
+
+  <!-- T2 / T3 / T4 -->
+  <rect x="286" y="132" width="226" height="394" class="tx"/>
+  <text x="292" y="586" class="txl">T2 — commit attempt STARTED TRƯỚC khi gọi HTTP</text>
+  <text x="292" y="602" class="txl">T3 — ghi kết quả attempt + trạng thái outbox cùng commit</text>
+  <text x="292" y="618" class="txl">T4 — restart: STARTED → UNKNOWN, hết lượt → DEAD</text>
+
+  <path d="M129 204 L129 384" class="wire"/>
+  <path d="M386 204 L386 384" class="wire"/>
+  <path d="M410 384 L410 204" class="wire"/>
+
+  <!-- ===================== PHÍA RECEIVER ===================== -->
+  <text x="624" y="130" class="h" fill="#1e293b">Phía receiver</text>
+
+  <rect x="624" y="142" width="214" height="62" class="proc"/>
+  <text x="636" y="164" class="h">Receiver API</text>
+  <text x="636" y="182" class="t">POST /webhooks/summaries</text>
+  <text x="636" y="197" class="s">timestamp → HMAC → parse → schema</text>
+
+  <rect x="890" y="142" width="226" height="62" class="proc"/>
+  <text x="902" y="164" class="h">Receiver worker</text>
+  <text x="902" y="182" class="t">đọc inbox, cập nhật nghiệp vụ</text>
+  <text x="902" y="197" class="s">process riêng, tắt được</text>
+
+  <rect x="624" y="330" width="492" height="300" class="dbbox"/>
+  <text x="636" y="354" class="h">DB receiver</text>
+  <text x="636" y="371" class="s">postgres://…/receiver</text>
+
+  <rect x="636" y="384" width="226" height="80" class="tbl"/>
+  <text x="646" y="403" class="t" font-weight="700">inbox</text>
+  <text x="646" y="419" class="s">UNIQUE (source, event_id)</text>
+  <text x="646" y="434" class="s">raw_body · body_sha256</text>
+  <text x="646" y="449" class="s">RECEIVED → PROCESSED</text>
+
+  <rect x="880" y="384" width="226" height="80" class="tbl"/>
+  <text x="890" y="403" class="t" font-weight="700">video_summaries</text>
+  <text x="890" y="419" class="s">video_id · version · summary</text>
+  <text x="890" y="434" class="s">applied_count — chỉ tăng khi</text>
+  <text x="890" y="449" class="s">version mới thật sự thay bản cũ</text>
+
+  <rect x="614" y="132" width="246" height="394" class="tx"/>
+  <text x="620" y="546" class="txl">T5 — INSERT inbox ON CONFLICT DO NOTHING, commit</text>
+
+  <rect x="872" y="132" width="252" height="394" class="tx"/>
+  <text x="878" y="586" class="txl">T6 — khóa dòng inbox → UPSERT khi version lớn hơn</text>
+  <text x="878" y="602" class="txl">→ PROCESSED, tất cả trong CÙNG một commit</text>
+  <text x="878" y="618" class="s">kill giữa đường thì cả hai cùng rollback (F7)</text>
+
+  <path d="M731 204 L731 384" class="wire"/>
+  <path d="M975 204 L975 384" class="wire"/>
+  <path d="M999 384 L999 204" class="wire"/>
+
+  <!-- HTTP webhook -->
+  <path d="M510 165 L624 165" class="wire2"/>
+  <text x="520" y="152" class="t" font-weight="700" fill="#1d4ed8">POST webhook</text>
+  <text x="520" y="136" class="s">HMAC trên raw body + timestamp</text>
+
+  <!-- ===================== HAI CALLOUT ===================== -->
+  <rect x="624" y="226" width="300" height="74" class="callbox"/>
+  <text x="636" y="248" class="call">Trả 202 ở ĐÂY</text>
+  <text x="636" y="266" class="t">chỉ sau khi INSERT inbox đã COMMIT</text>
+  <text x="636" y="282" class="s">202 = đã lưu bền vững, KHÔNG phải đã xử lý nghiệp vụ</text>
+  <path d="M700 300 L724 384" class="wire"/>
+
+  <rect x="24" y="226" width="300" height="74" class="callbox"/>
+  <text x="36" y="248" class="call">Đánh dấu DELIVERED ở ĐÂY</text>
+  <text x="36" y="266" class="t">chỉ sau khi relay nhận 2xx (trong T3)</text>
+  <text x="36" y="282" class="s">DELIVERED ≠ worker đã cập nhật nghiệp vụ (F10)</text>
+  <path d="M300 263 L378 263 L378 384" class="wire"/>
+
+  <text x="24" y="664" class="s">Ứng dụng khách hàng đọc GET /videos/:video_id/summary ở phía receiver — chưa có bản tóm tắt thì 404.</text>
+  <text x="24" y="682" class="s">Marker để kill process thật: sender after_job_update_before_outbox · after_sender_commit_before_response — relay after_http_2xx_before_delivery_commit — worker after_projection_write_before_commit</text>
+</svg>

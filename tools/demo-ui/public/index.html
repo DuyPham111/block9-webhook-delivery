@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block 9 — Giao sự kiện tin cậy</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">9</span>
+    <div><b>Giao sự kiện tin cậy với outbox, inbox và webhook</b>
+      <small>Web Nâng Cao · Block 9 · hai DB, bốn process</small></div>
+  </div>
+  <div class="procs" id="procs"></div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="flow" class="on">Sơ đồ <small>hai DB · 6 transaction</small></button>
+  <button data-tab="live">Chạy tay <small>sender · relay · receiver</small></button>
+  <button data-tab="cases">Ma trận kịch bản <small>H0 · F1–F10 · F3b</small></button>
+</nav>
+
+<main>
+  <!-- ============== SƠ ĐỒ ============== -->
+  <section id="tab-flow" class="tab on">
+    <div class="card">
+      <img src="/so-do.svg" alt="Sơ đồ hai DB, bốn process, sáu transaction" class="diagram">
+    </div>
+    <div class="grid3">
+      <div class="card tight">
+        <h3>202 nghĩa là gì</h3>
+        <p>Receiver đã <b>commit inbox</b>. Không nói gì về việc nghiệp vụ đã đổi.</p>
+      </div>
+      <div class="card tight">
+        <h3>DELIVERED nghĩa là gì</h3>
+        <p>Relay đã nhận <b>2xx</b>. Theo hợp đồng của lab thì inbox đã bền vững — nhưng worker có thể đang tắt (ca F10).</p>
+      </div>
+      <div class="card tight">
+        <h3>Không bảo đảm gì</h3>
+        <p>Không exactly-once đầu cuối. Chống lặp chỉ trong DB receiver. Một relay. Retry hữu hạn.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== CHẠY TAY ============== -->
+  <section id="tab-live" class="tab">
+    <div class="card bar">
+      <div class="row">
+        <button class="primary" data-complete="J42">Hoàn tất J42 <small>V7 version 1</small></button>
+        <button class="primary" data-complete="J43">Hoàn tất J43 <small>V7 version 2</small></button>
+        <button data-reset>Reset fixture</button>
+        <span class="sep"></span>
+        <label>Lỗi giả của receiver
+          <select id="fault">
+            <option value="">không</option>
+            <option value="respond_503_before_inbox">503 trước khi lưu inbox (F8)</option>
+            <option value="close_after_inbox_commit">đóng kết nối sau commit inbox (F4)</option>
+          </select>
+        </label>
+      </div>
+      <div class="msg" id="live-msg"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>DB sender</h2>
+        <h3>jobs</h3><div id="t-jobs"></div>
+        <h3>outbox <small>raw_body bất biến</small></h3><div id="t-outbox"></div>
+        <h3>delivery_attempts <small>một dòng = một lần gửi</small></h3><div id="t-attempts"></div>
+        <h3>replays</h3><div id="t-replays"></div>
+      </div>
+      <div class="card">
+        <h2>DB receiver</h2>
+        <h3>inbox <small>UNIQUE (source, event_id)</small></h3><div id="t-inbox"></div>
+        <h3>video_summaries <small>applied_count = số lần áp dụng nghiệp vụ</small></h3><div id="t-sum"></div>
+        <h3>GET /videos/V7/summary</h3><div id="t-api"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== MA TRẬN KỊCH BẢN ============== -->
+  <section id="tab-cases" class="tab">
+    <div class="card bar">
+      <div class="row">
+        <span class="hint">Mỗi ca tự reset fixture, tự bật/tắt/kill process thật, rồi so expected với observed.</span>
+      </div>
+    </div>
+    <div class="grid2 wide-left">
+      <div class="card">
+        <h2>Các ca</h2>
+        <div id="case-list"></div>
+      </div>
+      <div class="card">
+        <h2>Nhật ký chạy <span id="case-title" class="muted"></span></h2>
+        <div id="case-log" class="log"></div>
+        <div id="case-checks"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
